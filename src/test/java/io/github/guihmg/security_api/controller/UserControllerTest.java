@@ -1,6 +1,7 @@
 package io.github.guihmg.security_api.controller;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -95,5 +96,25 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.message").value(
                         "Já existe um usuário cadastrado com esse e-mail."
                 ));
+    }
+
+    @Test
+    void shouldRejectInvalidRegistrationData() throws Exception {
+        String requestBody = """
+                {
+                    "name": " ",
+                    "email": "email-invalido",
+                    "password": "123"
+                }
+                """;
+
+        mockMvc.perform(
+                        post("/api/users")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
     }
 }

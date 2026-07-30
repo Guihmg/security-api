@@ -11,6 +11,7 @@ import io.github.guihmg.security_api.domain.User;
 import io.github.guihmg.security_api.dto.RegisterUserRequest;
 import io.github.guihmg.security_api.dto.UserResponse;
 import io.github.guihmg.security_api.service.UserService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,7 +25,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserResponse> register(
-            @RequestBody RegisterUserRequest request
+            @Valid @RequestBody RegisterUserRequest request
     ) {
         User registeredUser = userService.register(
                 request.name(),
