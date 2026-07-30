@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import io.github.guihmg.security_api.domain.User;
+import io.github.guihmg.security_api.exception.InvalidCredentialsException;
 import io.github.guihmg.security_api.repository.UserRepository;
 
 class AuthServiceTest {
@@ -75,8 +76,8 @@ class AuthServiceTest {
         when(passwordEncoder.matches(rawPassword, passwordHash))
                 .thenReturn(false);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
                 () -> authService.authenticate(email, rawPassword)
         );
 

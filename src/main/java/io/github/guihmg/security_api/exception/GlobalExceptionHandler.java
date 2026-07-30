@@ -14,12 +14,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleIllegalArgumentException(
             IllegalArgumentException exception
     ) {
-        HttpStatus status = HttpStatus.CONFLICT;
+        return createResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage()
+        );
+    }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidCredentials(
+            InvalidCredentialsException exception
+    ) {
+        return createResponse(
+                HttpStatus.UNAUTHORIZED,
+                exception.getMessage()
+        );
+    }
+
+    private ResponseEntity<ApiError> createResponse(
+            HttpStatus status,
+            String message
+    ) {
         ApiError error = new ApiError(
                 Instant.now(),
                 status.value(),
-                exception.getMessage()
+                message
         );
 
         return ResponseEntity

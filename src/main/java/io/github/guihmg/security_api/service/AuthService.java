@@ -4,6 +4,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import io.github.guihmg.security_api.domain.User;
+import io.github.guihmg.security_api.exception.InvalidCredentialsException;
 import io.github.guihmg.security_api.repository.UserRepository;
 
 @Service
@@ -27,7 +28,9 @@ public class AuthService {
         User user = userRepository
                 .findByEmail(email)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(INVALID_CREDENTIALS)
+                        new InvalidCredentialsException(
+                                INVALID_CREDENTIALS
+                        )
                 );
 
         boolean passwordMatches = passwordEncoder.matches(
@@ -36,7 +39,9 @@ public class AuthService {
         );
 
         if (!passwordMatches) {
-            throw new IllegalArgumentException(INVALID_CREDENTIALS);
+            throw new InvalidCredentialsException(
+                    INVALID_CREDENTIALS
+            );
         }
 
         return user;
