@@ -2,6 +2,7 @@ package io.github.guihmg.security_api.service;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.guihmg.security_api.domain.User;
 import io.github.guihmg.security_api.repository.UserRepository;
@@ -11,15 +12,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthHistoryService authHistoryService;
 
     public UserService(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            AuthHistoryService authHistoryService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authHistoryService = authHistoryService;
     }
 
+    @Transactional
     public User register(
             String name,
             String email,
@@ -39,6 +44,10 @@ public class UserService {
                 passwordHash
         );
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        authHistoryService.recordRegistration(savedUser);
+
+        return savedUser;
     }
 }

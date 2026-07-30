@@ -3,6 +3,7 @@ package io.github.guihmg.security_api.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -19,16 +20,19 @@ class AuthServiceTest {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private AuthHistoryService authHistoryService;
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        authHistoryService = mock(AuthHistoryService.class);
 
         authService = new AuthService(
                 userRepository,
-                passwordEncoder
+                passwordEncoder,
+                authHistoryService
         );
     }
 
@@ -56,6 +60,9 @@ class AuthServiceTest {
         );
 
         assertEquals(user, authenticatedUser);
+
+        verify(authHistoryService)
+                .recordLoginSuccess(user);
     }
 
     @Test
@@ -85,5 +92,30 @@ class AuthServiceTest {
                 "E-mail ou senha inválidos.",
                 exception.getMessage()
         );
+
+        verify(authHistoryService)
+                .recordLoginFailure(email);
+    }
+
+    @Test
+    void shouldRejectUnknownEmail() {
+        String email = "naoexiste@gmail.com";
+        String rawPassword = "12345678";
+
+        when(userRepository.findByEmail(email))
+                .thenReturn(Optional.empty());
+
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.authenticate(email, rawPassword)
+        );
+
+        assertEquals(
+                "E-mail ou senha inválidos.",
+                exception.getMessage()
+        );
+
+        verify(authHistoryService)
+                .recordLoginFailure(email);
     }
 }

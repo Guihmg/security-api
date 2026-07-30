@@ -19,14 +19,20 @@ class UserServiceTest {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private AuthHistoryService authHistoryService;
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        authHistoryService = mock(AuthHistoryService.class);
 
-        userService = new UserService(userRepository, passwordEncoder);
+        userService = new UserService(
+                userRepository,
+                passwordEncoder,
+                authHistoryService
+        );
     }
 
     @Test
@@ -60,8 +66,17 @@ class UserServiceTest {
 
         assertEquals(name, savedUser.getName());
         assertEquals(email, savedUser.getEmail());
-        assertEquals(encryptedPassword, savedUser.getPasswordHash());
-        assertNotEquals(rawPassword, savedUser.getPasswordHash());
+        assertEquals(
+                encryptedPassword,
+                savedUser.getPasswordHash()
+        );
+        assertNotEquals(
+                rawPassword,
+                savedUser.getPasswordHash()
+        );
         assertEquals(savedUser, registeredUser);
+
+        verify(authHistoryService)
+                .recordRegistration(savedUser);
     }
 }

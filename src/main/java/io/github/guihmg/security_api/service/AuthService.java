@@ -15,23 +15,30 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthHistoryService authHistoryService;
 
     public AuthService(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            AuthHistoryService authHistoryService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authHistoryService = authHistoryService;
     }
 
     public User authenticate(String email, String rawPassword) {
         User user = userRepository
                 .findByEmail(email)
-                .orElseThrow(() ->
-                        new InvalidCredentialsException(
-                                INVALID_CREDENTIALS
-                        )
-                );
+                .orElse(null);
+
+        if (user == null) {
+            authHistoryService.recordLoginFailure(email);
+
+            throw new InvalidCredentialsException(
+                    INVALID_CREDENTIALS
+            );
+        }
 
         boolean passwordMatches = passwordEncoder.matches(
                 rawPassword,
@@ -39,10 +46,14 @@ public class AuthService {
         );
 
         if (!passwordMatches) {
+            authHistoryService.recordLoginFailure(email);
+
             throw new InvalidCredentialsException(
                     INVALID_CREDENTIALS
             );
         }
+
+        authHistoryService.recordLoginSuccess(user);
 
         return user;
     }
