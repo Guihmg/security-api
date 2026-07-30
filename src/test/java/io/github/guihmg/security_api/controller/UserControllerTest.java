@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import io.github.guihmg.security_api.domain.User;
+import io.github.guihmg.security_api.exception.GlobalExceptionHandler;
 import io.github.guihmg.security_api.service.UserService;
 
 class UserControllerTest {
@@ -26,6 +27,7 @@ class UserControllerTest {
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new UserController(userService))
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 
@@ -62,5 +64,36 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    }
+
+    @Test
+    void shouldReturnConflictWhenEmailAlreadyExists() throws Exception {
+        String name = "Guilherme Gomes";
+        String email = "guilhermeservh@gmail.com";
+        String password = "12345678";
+
+        when(userService.register(name, email, password))
+                .thenThrow(new IllegalArgumentException(
+                        "Já existe um usuário cadastrado com esse e-mail."
+                ));
+
+        String requestBody = """
+                {
+                    "name": "Guilherme Gomes",
+                    "email": "guilhermeservh@gmail.com",
+                    "password": "12345678"
+                }
+                """;
+
+        mockMvc.perform(
+                        post("/api/users")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value(
+                        "Já existe um usuário cadastrado com esse e-mail."
+                ));
     }
 }
