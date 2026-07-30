@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.github.guihmg.security_api.domain.User;
 import io.github.guihmg.security_api.dto.LoginRequest;
 import io.github.guihmg.security_api.dto.LoginResponse;
+import io.github.guihmg.security_api.security.JwtService;
 import io.github.guihmg.security_api.service.AuthService;
 import jakarta.validation.Valid;
 
@@ -17,9 +18,14 @@ import jakarta.validation.Valid;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+            AuthService authService,
+            JwtService jwtService
+    ) {
         this.authService = authService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/login")
@@ -31,8 +37,13 @@ public class AuthController {
                 request.password()
         );
 
-        return ResponseEntity.ok(
-                LoginResponse.from(authenticatedUser)
+        String token = jwtService.generateToken(authenticatedUser);
+
+        LoginResponse response = LoginResponse.from(
+                authenticatedUser,
+                token
         );
+
+        return ResponseEntity.ok(response);
     }
 }

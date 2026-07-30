@@ -1,6 +1,7 @@
 package io.github.guihmg.security_api.controller;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,27 +16,33 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import io.github.guihmg.security_api.domain.User;
 import io.github.guihmg.security_api.exception.GlobalExceptionHandler;
 import io.github.guihmg.security_api.exception.InvalidCredentialsException;
+import io.github.guihmg.security_api.security.JwtService;
 import io.github.guihmg.security_api.service.AuthService;
 
 class AuthControllerTest {
 
     private AuthService authService;
+    private JwtService jwtService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         authService = mock(AuthService.class);
+        jwtService = mock(JwtService.class);
 
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new AuthController(authService))
+                .standaloneSetup(
+                        new AuthController(authService, jwtService)
+                )
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 
     @Test
-    void shouldAuthenticateUser() throws Exception {
+    void shouldAuthenticateUserAndReturnToken() throws Exception {
         String email = "guilhermeservh@gmail.com";
         String password = "12345678";
+        String token = "generated-jwt-token";
 
         User authenticatedUser = new User(
                 "Guilherme Gomes",
@@ -45,6 +52,9 @@ class AuthControllerTest {
 
         when(authService.authenticate(email, password))
                 .thenReturn(authenticatedUser);
+
+        when(jwtService.generateToken(authenticatedUser))
+                .thenReturn(token);
 
         String requestBody = """
                 {
@@ -59,10 +69,11 @@ class AuthControllerTest {
                                 .content(requestBody)
                 )
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value(token))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.name")
                         .value("Guilherme Gomes"))
-                .andExpect(jsonPath("$.email")
-                        .value(email))
+                .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
     }
@@ -95,5 +106,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.message")
                         .value("E-mail ou senha inválidos."));
+
+        verifyNoInteractions(jwtService);
     }
 }
