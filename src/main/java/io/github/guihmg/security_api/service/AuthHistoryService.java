@@ -1,5 +1,7 @@
 package io.github.guihmg.security_api.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,12 @@ public class AuthHistoryService {
                 email,
                 AuthEventType.LOGIN_FAILURE
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthHistory> findByEmail(String email) {
+        return authHistoryRepository
+                .findByEmailOrderByOccurredAtDesc(email);
     }
 
     private AuthHistory save(

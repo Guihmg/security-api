@@ -7,6 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -82,6 +84,44 @@ class AuthHistoryServiceTest {
                 AuthEventType.LOGIN_FAILURE,
                 history.getEventType()
         );
+    }
+
+    @Test
+    void shouldFindHistoryByEmail() {
+        User user = createUser();
+        String email = user.getEmail();
+
+        AuthHistory success = new AuthHistory(
+                user,
+                email,
+                AuthEventType.LOGIN_SUCCESS
+        );
+
+        AuthHistory failure = new AuthHistory(
+                null,
+                email,
+                AuthEventType.LOGIN_FAILURE
+        );
+
+        when(authHistoryRepository
+                .findByEmailOrderByOccurredAtDesc(email))
+                .thenReturn(List.of(success, failure));
+
+        List<AuthHistory> history =
+                authHistoryService.findByEmail(email);
+
+        assertEquals(2, history.size());
+        assertEquals(
+                AuthEventType.LOGIN_SUCCESS,
+                history.get(0).getEventType()
+        );
+        assertEquals(
+                AuthEventType.LOGIN_FAILURE,
+                history.get(1).getEventType()
+        );
+
+        verify(authHistoryRepository)
+                .findByEmailOrderByOccurredAtDesc(email);
     }
 
     private User createUser() {

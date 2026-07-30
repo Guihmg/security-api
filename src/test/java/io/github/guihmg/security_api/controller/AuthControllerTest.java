@@ -3,6 +3,7 @@ package io.github.guihmg.security_api.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -21,17 +23,22 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import io.github.guihmg.security_api.domain.AuthEventType;
+import io.github.guihmg.security_api.domain.AuthHistory;
 import io.github.guihmg.security_api.domain.User;
+import io.github.guihmg.security_api.dto.AuthHistoryResponse;
 import io.github.guihmg.security_api.dto.CurrentUserResponse;
 import io.github.guihmg.security_api.exception.GlobalExceptionHandler;
 import io.github.guihmg.security_api.exception.InvalidCredentialsException;
 import io.github.guihmg.security_api.security.JwtService;
+import io.github.guihmg.security_api.service.AuthHistoryService;
 import io.github.guihmg.security_api.service.AuthService;
 
 class AuthControllerTest {
 
     private AuthService authService;
     private JwtService jwtService;
+    private AuthHistoryService authHistoryService;
     private AuthController authController;
     private MockMvc mockMvc;
 
@@ -39,10 +46,12 @@ class AuthControllerTest {
     void setUp() {
         authService = mock(AuthService.class);
         jwtService = mock(JwtService.class);
+        authHistoryService = mock(AuthHistoryService.class);
 
         authController = new AuthController(
                 authService,
-                jwtService
+                jwtService,
+                authHistoryService
         );
 
         mockMvc = MockMvcBuilders
@@ -128,18 +137,7 @@ class AuthControllerTest {
         String name = "Guilherme Gomes";
         String email = "guilhermeservh@gmail.com";
 
-        Instant now = Instant.now();
-
-        Jwt jwt = new Jwt(
-                "generated-jwt-token",
-                now,
-                now.plusSeconds(3600),
-                Map.of("alg", "HS256"),
-                Map.of(
-                        "sub", email,
-                        "name", name
-                )
-        );
+        Jwt jwt = createJwt(name, email);
 
         ResponseEntity<CurrentUserResponse> response =
                 authController.me(jwt);
@@ -151,5 +149,63 @@ class AuthControllerTest {
         assertNotNull(body);
         assertEquals(name, body.name());
         assertEquals(email, body.email());
+    }
+
+    @Test
+    void shouldReturnAuthenticatedUserHistory() {
+        String name = "Guilherme Gomes";
+        String email = "guilhermeservh@gmail.com";
+
+        User user = new User(
+                name,
+                email,
+                "encrypted-password"
+        );
+
+        AuthHistory success = new AuthHistory(
+                user,
+                email,
+                AuthEventType.LOGIN_SUCCESS
+        );
+
+        AuthHistory failure = new AuthHistory(
+                null,
+                email,
+                AuthEventType.LOGIN_FAILURE
+        );
+
+        when(authHistoryService.findByEmail(email))
+                .thenReturn(List.of(success, failure));
+
+        Jwt jwt = createJwt(name, email);
+
+        ResponseEntity<List<AuthHistoryResponse>> response =
+                authController.history(jwt);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        List<AuthHistoryResponse> body = response.getBody();
+
+        assertNotNull(body);
+        assertEquals(2, body.size());
+        assertEquals("LOGIN_SUCCESS", body.get(0).eventType());
+        assertEquals("LOGIN_FAILURE", body.get(1).eventType());
+
+        verify(authHistoryService).findByEmail(email);
+    }
+
+    private Jwt createJwt(String name, String email) {
+        Instant now = Instant.now();
+
+        return new Jwt(
+                "generated-jwt-token",
+                now,
+                now.plusSeconds(3600),
+                Map.of("alg", "HS256"),
+                Map.of(
+                        "sub", email,
+                        "name", name
+                )
+        );
     }
 }
